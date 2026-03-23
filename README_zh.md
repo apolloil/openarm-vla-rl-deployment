@@ -24,7 +24,7 @@ pip install -e openarm_isaac_lab/source/openarm --no-build-isolation
 pip install -e openarm_vla/source/openarm_vla --no-build-isolation
 ```
 
-完整环境搭建见 `openarm_vla/docs/conda_isaac_lab_setup.md`。
+完整conda环境搭建见 `openarm_vla/docs/conda_isaac_lab_setup.md`。
 
 ## 已注册的 Gym 环境
 
