@@ -1,0 +1,3 @@
+[submodule "openarm_isaac_lab"]
+	path = openarm_isaac_lab
+	url = https://github.com/apolloil/openarm_isaac_lab.git

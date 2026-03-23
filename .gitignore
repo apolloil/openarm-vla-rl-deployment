@@ -1,0 +1,6 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+
+openarm_vla/EE_API_Test/videos/*.mp4
