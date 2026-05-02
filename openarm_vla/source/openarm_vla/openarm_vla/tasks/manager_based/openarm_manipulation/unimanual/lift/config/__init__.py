@@ -18,17 +18,19 @@
 
 import gymnasium as gym
 
-# Agent configs live in the base openarm package
-_AGENTS = "openarm.tasks.manager_based.openarm_manipulation.unimanual.lift.config.agents"
+# VLA-local PPO config (subclasses the base openarm cfg with tweaked hyperparams)
+_LOCAL_AGENTS = f"{__name__}.agents"
+# Other agent configs (skrl, rl_games) still live in the base openarm package
+_BASE_AGENTS = "openarm.tasks.manager_based.openarm_manipulation.unimanual.lift.config.agents"
 
 gym.register(
     id="Isaac-VLA-Lift-Cube-OpenArm-v0",
     entry_point="isaaclab.envs:ManagerBasedRLEnv",
     kwargs={
         "env_cfg_entry_point": f"{__name__}.vla_env_cfg:OpenArmLiftVlaEnvCfg",
-        "rsl_rl_cfg_entry_point": f"{_AGENTS}.rsl_rl_ppo_cfg:OpenArmLiftCubePPORunnerCfg",
-        "skrl_cfg_entry_point": f"{_AGENTS}:skrl_ppo_cfg.yaml",
-        "rl_games_cfg_entry_point": f"{_AGENTS}:rl_games_ppo_cfg.yaml",
+        "rsl_rl_cfg_entry_point": f"{_LOCAL_AGENTS}.rsl_rl_ppo_cfg:OpenArmLiftVlaPPORunnerCfg",
+        "skrl_cfg_entry_point": f"{_BASE_AGENTS}:skrl_ppo_cfg.yaml",
+        "rl_games_cfg_entry_point": f"{_BASE_AGENTS}:rl_games_ppo_cfg.yaml",
     },
     disable_env_checker=True,
 )
@@ -38,9 +40,9 @@ gym.register(
     entry_point="isaaclab.envs:ManagerBasedRLEnv",
     kwargs={
         "env_cfg_entry_point": f"{__name__}.vla_env_cfg:OpenArmLiftVlaEnvCfg_PLAY",
-        "rsl_rl_cfg_entry_point": f"{_AGENTS}.rsl_rl_ppo_cfg:OpenArmLiftCubePPORunnerCfg",
-        "skrl_cfg_entry_point": f"{_AGENTS}:skrl_ppo_cfg.yaml",
-        "rl_games_cfg_entry_point": f"{_AGENTS}:rl_games_ppo_cfg.yaml",
+        "rsl_rl_cfg_entry_point": f"{_LOCAL_AGENTS}.rsl_rl_ppo_cfg:OpenArmLiftVlaPPORunnerCfg",
+        "skrl_cfg_entry_point": f"{_BASE_AGENTS}:skrl_ppo_cfg.yaml",
+        "rl_games_cfg_entry_point": f"{_BASE_AGENTS}:rl_games_ppo_cfg.yaml",
     },
     disable_env_checker=True,
 )

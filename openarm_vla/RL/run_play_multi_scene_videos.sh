@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# Sequentially run play_lift.py for scene presets 0–9 (one process at a time; saves VRAM).
+# Videos go to: <openarm repo>/Multi-Scene-Video/
+#
+#   bash openarm_vla/RL/run_play_multi_scene_videos.sh
+#
+# Requires: conda env ``env_isaaclab``, checkpoint/settings edited in play_lift.py.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+OUT_DIR="${REPO_ROOT}/Multi-Scene-Video"
+PLAY_PY="${SCRIPT_DIR}/play_lift.py"
+
+mkdir -p "${OUT_DIR}"
+
+if [[ ! -f "${PLAY_PY}" ]]; then
+  echo "ERROR: missing ${PLAY_PY}" >&2
+  exit 1
+fi
+
+# shellcheck disable=SC1091
+if [[ -f "${HOME}/miniforge3/etc/profile.d/conda.sh" ]]; then
+  source "${HOME}/miniforge3/etc/profile.d/conda.sh"
+elif [[ -f "${HOME}/workspace/miniforge3/etc/profile.d/conda.sh" ]]; then
+  source "${HOME}/workspace/miniforge3/etc/profile.d/conda.sh"
+elif [[ -f "${HOME}/mambaforge/etc/profile.d/conda.sh" ]]; then
+  source "${HOME}/mambaforge/etc/profile.d/conda.sh"
+elif [[ -f "${HOME}/anaconda3/etc/profile.d/conda.sh" ]]; then
+  source "${HOME}/anaconda3/etc/profile.d/conda.sh"
+else
+  echo "ERROR: conda.sh not found (tried ~/miniforge3, ~/workspace/miniforge3, …)" >&2
+  exit 1
+fi
+
+conda activate env_isaaclab
+
+cd "${REPO_ROOT}"
+export OPENARM_PLAY_VIDEO_DIR="${OUT_DIR}"
+
+echo "[INFO] Repo:    ${REPO_ROOT}"
+echo "[INFO] Videos:  ${OUT_DIR}"
+echo "[INFO] Serial presets 0..9 (strictly one Python/Isaac process at a time)."
+
+for i in $(seq 0 9); do
+  echo ""
+  echo "========================================"
+  echo "[INFO] Starting preset ${i} / 9"
+  echo "========================================"
+  export OPENARM_PLAY_SCENE_PRESET="${i}"
+  python "${PLAY_PY}"
+  echo "[INFO] Finished preset ${i}"
+done
+
+echo ""
+echo "[INFO] All presets done. MP4s in: ${OUT_DIR}"

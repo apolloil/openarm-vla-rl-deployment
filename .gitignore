@@ -3,4 +3,22 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 
-openarm_vla/EE_API_Test/videos/*.mp4
+logs/
+Multi-Scene-Video/
+
+# Local third-party checkout; not included in this repo for now.
+lerobot/
+
+# Training, evaluation, and export artifacts.
+*.mp4
+*.pt
+*.onnx
+*.jit
+*.npz
+*.parquet
+
+openarm_vla/Datasets/
+openarm_vla/EE_API_Test/videos/
+openarm_vla/EE_API_Test/soccer_logs*/
+openarm_vla/EE_API_Test/soccer_videos*/
+openarm_vla/EE_API_Test/soccer_goal_arc*/

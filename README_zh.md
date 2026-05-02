@@ -1,65 +1,103 @@
-# OpenArm
+# OpenArm VLA RL Deployment
 
-[openarm_isaac_lab](https://github.com/enactic/openarm_isaac_lab) 的扩展，提供 VLA（视觉-语言-动作）接口和基于差分 IK 的环境。
+中文文档。English documentation: [README.md](README.md).
 
-**English docs:** [README.md](README.md)
+这个仓库用于 OpenArm Isaac Lab 的 VLA/RL 实验部署。基础 Isaac Lab 扩展放在 `openarm_isaac_lab` submodule 中；主仓库额外提供 `openarm_vla`、DiffIK 任务变体、PPO 训练/播放脚本和轻量数据采集工具。
 
-## 目录结构
+## 仓库结构
 
-```
+```text
 openarm/
-├── openarm_isaac_lab/   # 基础 Isaac Lab 扩展（上游 Fork）
-└── openarm_vla/         # VLA 接口与 DiffIK 环境
-    ├── EE_API_Test/     # 冒烟测试脚本与接口说明（README）
-    ├── docs/
-    └── source/openarm_vla/
+├── openarm_isaac_lab/          # git submodule：基础 OpenArm Isaac Lab 任务和资产
+└── openarm_vla/
+    ├── RL/                     # PPO train/play 脚本和 action wrapper
+    ├── EE_API_Test/            # EE 动作通道冒烟测试
+    ├── VLA_FT/                 # 可选 SmolVLA 微调辅助脚本
+    └── source/openarm_vla/     # 可安装 Python 包和 Gym 注册
 ```
+
+`lerobot/` 在本次整理中故意忽略，不纳入主仓库；需要时请作为本地 checkout 或单独管理。
 
 ## 安装
 
-在 Isaac Lab 的 conda 环境或 Docker 镜像中执行：
+带 submodule clone，然后在 Isaac Lab 环境中 editable 安装两个包：
 
 ```bash
+git clone --recurse-submodules https://github.com/apolloil/openarm-vla-rl-deployment.git
+cd openarm-vla-rl-deployment
+
 pip install -e openarm_isaac_lab/source/openarm --no-build-isolation
 pip install -e openarm_vla/source/openarm_vla --no-build-isolation
 ```
 
-完整conda环境搭建见 `openarm_vla/docs/conda_isaac_lab_setup.md`。
+如果 clone 时没有拉 submodule：
 
-## 已注册的 Gym 环境
+```bash
+git submodule update --init --recursive
+```
 
+## RL 训练与播放
 
-| Gym ID                                  | 任务       | 模式  |
-| --------------------------------------- | -------- | --- |
-| `Isaac-VLA-Lift-Cube-OpenArm-Play-v0`   | 抬起方块     | 单臂  |
-| `Isaac-VLA-Reach-OpenArm-Play-v0`       | 末端到达     | 单臂  |
-| `Isaac-VLA-Open-Drawer-OpenArm-Play-v0` | 开抽屉      | 单臂  |
-| `Isaac-VLA-Reach-OpenArm-Bi-Play-v0`    | 双臂到达     | 双臂  |
-| `Isaac-VLA-OpenArm-Bi-Play-v0`          | 自由（桌面场景） | 双臂  |
+在仓库根目录运行，并先激活 Isaac Lab conda 环境。
 
+```bash
+# Lift
+python openarm_vla/RL/train_lift.py
+python openarm_vla/RL/play_lift.py
 
-### 任务名称
+# Soccer
+python openarm_vla/RL/train_soccer.py
+python openarm_vla/RL/play_soccer.py
+```
 
+常用训练参数：
 
-| `task`        | 模式  | 动作维度 |
-| ------------- | --- | ---- |
-| `"lift"`      | 单臂  | 7    |
-| `"reach_uni"` | 单臂  | 7    |
-| `"cabinet"`   | 单臂  | 7    |
-| `"reach_bi"`  | 双臂  | 14   |
+```bash
+python openarm_vla/RL/train_lift.py --num_envs 2048 --max_iterations 5000 --seed 42
+python openarm_vla/RL/train_soccer.py --num_envs 2048 --max_iterations 4000 --seed 42
+python openarm_vla/RL/train_soccer.py --video --video_interval 500
+```
 
+播放脚本主要通过文件顶部常量配置，重点是 `CHECKPOINT_PATH`、`PLAY_GUI` 和视频输出目录。
 
-**单臂（7 维）：** `[Δx, Δy, Δz, Δroll, Δpitch, Δyaw, grip]`，机器人基座系下的增量（m / rad）。  
-**双臂（14 维）：** `[左臂 7 维, 右臂 7 维]`，每臂格式相同。  
-**夹爪：** > 0.5 → 张开，≤ 0.5 → 闭合。
+## Soccer Pipeline
+
+Soccer 训练阶段只训练策略把球带到 `Pre_Goal`。播放阶段在球稳定到达 `Pre_Goal` 后切换到硬编码启发式：释放并抬起机械臂、移动到 `P_kick`、下降到场地、再朝球门方向踢球。`Pre_Goal` 和 `P_kick` 会在 play 与 EE 冒烟测试中以标记点显示。
+
+## Gym ID
+
+| 任务 | 训练 ID | 播放 ID |
+| --- | --- | --- |
+| Lift | `Isaac-VLA-Lift-Cube-OpenArm-v0` | `Isaac-VLA-Lift-Cube-OpenArm-Play-v0` |
+| Soccer | `Isaac-VLA-Soccer-OpenArm-v0` | `Isaac-VLA-Soccer-OpenArm-Play-v0` |
 
 ## 冒烟测试
 
-录制 7 段 MP4（每个末端自由度一段），使用抬块场景：
-
 ```bash
-python openarm_vla/EE_API_Test/test_ee_dims_video.py          # 无界面
-python openarm_vla/EE_API_Test/test_ee_dims_video.py --gui    # 带视口
+python openarm_vla/EE_API_Test/test_ee_dims_video.py
+python openarm_vla/EE_API_Test/test_soccer_ee_dims_video.py
 ```
 
-输出目录：`openarm_vla/EE_API_Test/videos/`。接口说明：[openarm_vla/EE_API_Test/README.md](openarm_vla/EE_API_Test/README.md)。
+生成的视频、日志、checkpoint、导出模型和数据集 shard 都已被 `.gitignore` 忽略。
+
+## Submodule Push 顺序
+
+只要改到了 `openarm_isaac_lab`，必须先提交并 push submodule：
+
+```bash
+cd openarm_isaac_lab
+git status
+git add <changed files>
+git commit -m "..."
+git push origin main
+cd ..
+```
+
+然后回到主仓库提交，其中会包含更新后的 submodule 指针：
+
+```bash
+git status
+git add .gitignore README.md README_zh.md openarm_vla openarm_isaac_lab
+git commit -m "..."
+git push origin main
+```

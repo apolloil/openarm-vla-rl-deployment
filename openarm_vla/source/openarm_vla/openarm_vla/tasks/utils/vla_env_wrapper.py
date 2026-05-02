@@ -35,6 +35,7 @@ Task name       Mode        Gym ID (play variant)
 "reach_uni"     unimanual   Isaac-VLA-Reach-OpenArm-Play-v0
 "lift"          unimanual   Isaac-VLA-Lift-Cube-OpenArm-Play-v0
 "cabinet"       unimanual   Isaac-VLA-Open-Drawer-OpenArm-Play-v0
+"soccer"        unimanual   Isaac-VLA-Soccer-OpenArm-Play-v0
 
 Action dimensions
 -----------------
@@ -69,6 +70,7 @@ TASK_REGISTRY: dict[str, tuple[str, str]] = {
     "reach_uni": ("Isaac-VLA-Reach-OpenArm-Play-v0",           "unimanual"),
     "lift":      ("Isaac-VLA-Lift-Cube-OpenArm-Play-v0",       "unimanual"),
     "cabinet":   ("Isaac-VLA-Open-Drawer-OpenArm-Play-v0",     "unimanual"),
+    "soccer":    ("Isaac-VLA-Soccer-OpenArm-Play-v0",          "unimanual"),
 }
 
 _UNIMANUAL_DIM = 7

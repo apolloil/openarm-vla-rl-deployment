@@ -1,65 +1,103 @@
-# OpenArm
+# OpenArm VLA RL Deployment
 
-Extension of [openarm_isaac_lab](https://github.com/enactic/openarm_isaac_lab) with a VLA (Vision-Language-Action) interface and DiffIK-based environments.
+English documentation. 中文文档见 [README_zh.md](README_zh.md).
 
-**中文文档：** [README_zh.md](README_zh.md)
+This repository contains the VLA/RL layer for OpenArm Isaac Lab experiments. The base Isaac Lab extension lives in the `openarm_isaac_lab` submodule; this repo adds `openarm_vla`, DiffIK task variants, PPO train/play scripts, and lightweight data-collection utilities.
 
-## Structure
+## Repository Layout
 
-```
+```text
 openarm/
-├── openarm_isaac_lab/   # base Isaac Lab extension (upstream fork)
-└── openarm_vla/         # VLA interface & DiffIK environments
-    ├── EE_API_Test/     # smoke test script + API notes (README)
-    ├── docs/
-    └── source/openarm_vla/
+├── openarm_isaac_lab/          # git submodule: base OpenArm Isaac Lab tasks/assets
+└── openarm_vla/
+    ├── RL/                     # PPO train/play scripts and action wrappers
+    ├── EE_API_Test/            # EE action-channel smoke tests
+    ├── VLA_FT/                 # optional SmolVLA fine-tuning helpers
+    └── source/openarm_vla/     # installable Python package and Gym registration
 ```
+
+`lerobot/` is intentionally ignored in this cleanup. Keep it as a local checkout or manage it separately if needed.
 
 ## Installation
 
-Run inside the Isaac Lab conda env or Docker image:
+Clone with submodules, then install both editable packages inside the Isaac Lab environment:
 
 ```bash
+git clone --recurse-submodules https://github.com/apolloil/openarm-vla-rl-deployment.git
+cd openarm-vla-rl-deployment
+
 pip install -e openarm_isaac_lab/source/openarm --no-build-isolation
 pip install -e openarm_vla/source/openarm_vla --no-build-isolation
 ```
 
-See `openarm_vla/docs/conda_isaac_lab_setup.md` for full conda environment setup.
-
-## Registered Gym Environments
-
-
-| Gym ID                                  | Task               | Mode      |
-| --------------------------------------- | ------------------ | --------- |
-| `Isaac-VLA-Lift-Cube-OpenArm-Play-v0`   | Lift cube          | unimanual |
-| `Isaac-VLA-Reach-OpenArm-Play-v0`       | Reach              | unimanual |
-| `Isaac-VLA-Open-Drawer-OpenArm-Play-v0` | Open drawer        | unimanual |
-| `Isaac-VLA-Reach-OpenArm-Bi-Play-v0`    | Reach              | bimanual  |
-| `Isaac-VLA-OpenArm-Bi-Play-v0`          | Free (table scene) | bimanual  |
-
-
-### Task names
-
-
-| `task`        | Mode      | Action dims |
-| ------------- | --------- | ----------- |
-| `"lift"`      | unimanual | 7           |
-| `"reach_uni"` | unimanual | 7           |
-| `"cabinet"`   | unimanual | 7           |
-| `"reach_bi"`  | bimanual  | 14          |
-
-
-**Unimanual (7-dim):** `[Δx, Δy, Δz, Δroll, Δpitch, Δyaw, grip]` — deltas in robot base frame (m / rad).  
-**Bimanual (14-dim):** `[left_arm(7), right_arm(7)]` — same layout per arm.  
-**Gripper:** > 0.5 → open, ≤ 0.5 → close.
-
-## Smoke Test
-
-Records 7 MP4s (one per EE DoF) using the Lift-Cube scene:
+If you cloned without submodules:
 
 ```bash
-python openarm_vla/EE_API_Test/test_ee_dims_video.py          # headless
-python openarm_vla/EE_API_Test/test_ee_dims_video.py --gui    # with viewport
+git submodule update --init --recursive
 ```
 
-Output: `openarm_vla/EE_API_Test/videos/`. API details: [openarm_vla/EE_API_Test/README.md](openarm_vla/EE_API_Test/README.md).
+## RL Train And Play
+
+Run commands from the repository root with the Isaac Lab conda environment active.
+
+```bash
+# Lift
+python openarm_vla/RL/train_lift.py
+python openarm_vla/RL/play_lift.py
+
+# Soccer
+python openarm_vla/RL/train_soccer.py
+python openarm_vla/RL/play_soccer.py
+```
+
+Useful training overrides:
+
+```bash
+python openarm_vla/RL/train_lift.py --num_envs 2048 --max_iterations 5000 --seed 42
+python openarm_vla/RL/train_soccer.py --num_envs 2048 --max_iterations 4000 --seed 42
+python openarm_vla/RL/train_soccer.py --video --video_interval 500
+```
+
+The play scripts are configured by constants at the top of each file, especially `CHECKPOINT_PATH`, `PLAY_GUI`, and video output settings.
+
+## Soccer Pipeline
+
+Soccer training only teaches the policy to bring the ball to `Pre_Goal`. The play script then switches to a deterministic heuristic once the ball is stable near `Pre_Goal`: release/lift the arm, move to `P_kick`, lower to the field, and kick toward the goal. `Pre_Goal` and `P_kick` are rendered as debug markers during play and EE smoke tests.
+
+## Gym IDs
+
+| Task | Training ID | Play ID |
+| --- | --- | --- |
+| Lift | `Isaac-VLA-Lift-Cube-OpenArm-v0` | `Isaac-VLA-Lift-Cube-OpenArm-Play-v0` |
+| Soccer | `Isaac-VLA-Soccer-OpenArm-v0` | `Isaac-VLA-Soccer-OpenArm-Play-v0` |
+
+## Smoke Tests
+
+```bash
+python openarm_vla/EE_API_Test/test_ee_dims_video.py
+python openarm_vla/EE_API_Test/test_soccer_ee_dims_video.py
+```
+
+Generated videos, logs, checkpoints, exports, and dataset shards are ignored by git.
+
+## Submodule Push Order
+
+When changes touch `openarm_isaac_lab`, commit and push the submodule first:
+
+```bash
+cd openarm_isaac_lab
+git status
+git add <changed files>
+git commit -m "..."
+git push origin main
+cd ..
+```
+
+Then commit the main repository, including the updated submodule pointer:
+
+```bash
+git status
+git add .gitignore README.md README_zh.md openarm_vla openarm_isaac_lab
+git commit -m "..."
+git push origin main
+```
