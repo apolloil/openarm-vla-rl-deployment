@@ -20,11 +20,12 @@
 #   SKIP_FULL            0
 #   SKIP_LORA            0
 #   FORCE_FRESH_OUTPUT   0     (=1 时重跑前删 OUTPUT_ROOT 下的两个子目录)
+#   SMOKE_CHECKPOINT_PATH  PPO expert checkpoint for data collection
 # -----------------------------------------------------------------------------
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${HERE}/../.." && pwd)"  # /home/lcw/workspace/openarm
+REPO_ROOT="$(cd "${HERE}/../.." && pwd)"
 
 SMOKE_DATASET_ROOT="${SMOKE_DATASET_ROOT:-${REPO_ROOT}/openarm_vla/Datasets/_smoke_test}"
 SMOKE_REPO_ID="${SMOKE_REPO_ID:-openarm/lift_cube_smoke}"
@@ -37,8 +38,9 @@ SKIP_DATA_COLLECT="${SKIP_DATA_COLLECT:-0}"
 SKIP_FULL="${SKIP_FULL:-0}"
 SKIP_LORA="${SKIP_LORA:-0}"
 FORCE_FRESH_OUTPUT="${FORCE_FRESH_OUTPUT:-0}"
+SMOKE_CHECKPOINT_PATH="${SMOKE_CHECKPOINT_PATH:-}"
 
-CONDA_BASE="${CONDA_BASE:-/home/lcw/workspace/miniforge3}"
+CONDA_BASE="${CONDA_BASE:-${HOME}/workspace/miniforge3}"
 ISAAC_ENV_NAME="${ISAAC_ENV_NAME:-env_isaaclab}"
 SMOLVLA_ENV_NAME="${SMOLVLA_ENV_NAME:-smolvla}"
 
@@ -76,6 +78,10 @@ elif [[ "${SKIP_DATA_COLLECT}" == "1" ]]; then
   exit 1
 else
   say "没找到已有 smoke shard，调用 collect_dataset.py 采 2 个 episode..."
+  if [[ -z "${SMOKE_CHECKPOINT_PATH}" ]]; then
+    echo "[smoke_test_smolvla] 需要设置 SMOKE_CHECKPOINT_PATH=/path/to/model.pt 才能采集 smoke dataset" >&2
+    exit 1
+  fi
   mkdir -p "${SMOKE_DATASET_ROOT}"
 
   # collect_dataset.py 需要 env_isaaclab (3.11 Isaac Lab)。
@@ -90,6 +96,7 @@ else
     OPENARM_COLLECT_NUM_SUCCESS=2 \
     OPENARM_COLLECT_DATASET_ROOT="${SMOKE_DATASET_ROOT}" \
     OPENARM_COLLECT_DATASET_REPO_ID="${SMOKE_REPO_ID}" \
+    OPENARM_COLLECT_CHECKPOINT_PATH="${SMOKE_CHECKPOINT_PATH}" \
     python "${COLLECT_PY}"
   )
 

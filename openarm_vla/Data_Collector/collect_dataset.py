@@ -21,24 +21,24 @@ Highlights:
   clone, which is a separate change.
 
     conda activate env_isaaclab
-    cd /home/lcw/workspace/openarm
-    python openarm_vla/Data_Collector/collect_dataset.py
+    cd /path/to/openarm
+    python openarm_vla/Data_Collector/collect_dataset.py --checkpoint_path /path/to/model.pt
 """
 
 from __future__ import annotations
 
 # =============================================================================
-# Collection configuration — edit here or override via env vars.
+# Collection defaults.
 # =============================================================================
-CHECKPOINT_PATH = "/home/lcw/workspace/openarm/logs/rsl_rl/openarm_lift/2026-04-21_16-57-06/model_3999.pt"
+from pathlib import Path
 
 COLLECT_TASK = "Isaac-VLA-Lift-Cube-OpenArm-Play-v0"
 RSL_RL_AGENT_ENTRY = "rsl_rl_cfg_entry_point"
-COLLECT_DEVICE: str | None = None  # None → hydra default (cuda)
 COLLECT_GUI = False
 
 # Output dataset root (parent dir will be created). One flat dataset per run.
-DATASET_ROOT = "/home/lcw/workspace/openarm/openarm_vla/Datasets/lift_cube_expert_v0"
+OPENARM_REPO_ROOT = Path(__file__).resolve().parents[2]
+DATASET_ROOT = str(OPENARM_REPO_ROOT / "openarm_vla" / "Datasets" / "lift_cube_expert_v0")
 DATASET_REPO_ID = "openarm/lift_cube_expert_v0"
 ROBOT_TYPE = "openarm_unimanual"
 
@@ -59,8 +59,6 @@ TAIL_BUFFER_STEPS = 3
 
 VIDEO_CODEC = "h264"                 # vs. LeRobot default "libsvtav1"
 TASK_STRING = "pick up the red cube and move it to the violet marker"
-
-OPENARM_REPO_ROOT = "/home/lcw/workspace/openarm"
 # =============================================================================
 
 import argparse
@@ -69,9 +67,6 @@ import sys
 import time
 
 os.environ.setdefault("CARB_LOGGING_LEVEL", "error")
-
-# Hydra-gated scripts must not see stray argv.
-sys.argv = [sys.argv[0]]
 
 # ── Env-var overrides (before AppLauncher) ────────────────────────────────
 def _env_int(key: str, default: int) -> int:
@@ -87,12 +82,25 @@ if _ds_root_env:
 _ds_repo_env = os.environ.get("OPENARM_COLLECT_DATASET_REPO_ID", "").strip()
 if _ds_repo_env:
     DATASET_REPO_ID = _ds_repo_env
+_checkpoint_env = os.environ.get("OPENARM_COLLECT_CHECKPOINT_PATH", "").strip()
 
 from isaaclab.app import AppLauncher
 
 import cli_args  # isort: skip
 
-_parser = argparse.ArgumentParser(description="Collect VLA dataset (config via globals / env vars).")
+_parser = argparse.ArgumentParser(description="Collect VLA dataset from a PPO checkpoint.")
+_parser.add_argument(
+    "--checkpoint_path",
+    "--checkpoint-path",
+    default=_checkpoint_env or None,
+    required=not bool(_checkpoint_env),
+    help="Path to the RSL-RL model checkpoint. Can also be set with OPENARM_COLLECT_CHECKPOINT_PATH.",
+)
+_parser.add_argument("--dataset_root", "--dataset-root", default=DATASET_ROOT)
+_parser.add_argument("--dataset_repo_id", "--dataset-repo-id", default=DATASET_REPO_ID)
+_parser.add_argument("--num_success", "--num-success", type=int, default=NUM_SUCCESSFUL_EPISODES)
+_parser.add_argument("--scene_preset_id", "--scene-preset-id", type=int, default=COLLECT_SCENE_PRESET_ID)
+_parser.add_argument("--gui", action="store_true", default=COLLECT_GUI)
 _parser.add_argument("--video", action="store_true", default=False, help=argparse.SUPPRESS)
 _parser.add_argument("--video_length", type=int, default=500, help=argparse.SUPPRESS)
 _parser.add_argument("--video_interval", type=int, default=2000, help=argparse.SUPPRESS)
@@ -104,14 +112,22 @@ _parser.add_argument("--max_iterations", type=int, default=None, help=argparse.S
 _parser.add_argument("--distributed", action="store_true", default=False, help=argparse.SUPPRESS)
 cli_args.add_rsl_rl_args(_parser)
 AppLauncher.add_app_launcher_args(_parser)
-args_cli = _parser.parse_args([])
+args_cli, hydra_args = _parser.parse_known_args()
+
+# Hydra-gated scripts must not see collect/AppLauncher args.
+sys.argv = [sys.argv[0]] + hydra_args
+
+CHECKPOINT_PATH = args_cli.checkpoint_path
+DATASET_ROOT = args_cli.dataset_root
+DATASET_REPO_ID = args_cli.dataset_repo_id
+NUM_SUCCESSFUL_EPISODES = args_cli.num_success
+COLLECT_SCENE_PRESET_ID = args_cli.scene_preset_id
+COLLECT_GUI = args_cli.gui
 
 args_cli.task = COLLECT_TASK
 args_cli.agent = RSL_RL_AGENT_ENTRY
 args_cli.video = True  # required to get scene_rgb_cam outputs with enable_cameras
 args_cli.enable_cameras = True
-if COLLECT_DEVICE is not None:
-    args_cli.device = COLLECT_DEVICE
 if COLLECT_GUI:
     os.environ["HEADLESS"] = "0"
     args_cli.headless = False
@@ -124,8 +140,6 @@ simulation_app = app_launcher.app
 """Rest everything follows."""
 
 from datetime import datetime
-from pathlib import Path
-
 import gymnasium as gym
 import numpy as np
 import torch
@@ -253,10 +267,6 @@ def main(
     # would need a per-env scene_rgb_cam clone (deferred; see module docstring).
     env_cfg.scene.num_envs = 1
     env_cfg.seed = agent_cfg.seed
-
-    if COLLECT_DEVICE is not None:
-        env_cfg.sim.device = COLLECT_DEVICE
-        agent_cfg.device = COLLECT_DEVICE
 
     log_root_path = os.path.join(OPENARM_REPO_ROOT, "logs", "rsl_rl", agent_cfg.experiment_name)
     print(f"[INFO] Loading experiment from directory: {log_root_path}")

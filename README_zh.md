@@ -10,13 +10,11 @@
 openarm/
 ├── openarm_isaac_lab/          # git submodule：基础 OpenArm Isaac Lab 任务和资产
 └── openarm_vla/
-    ├── Data_Collector/                     # PPO train/play 脚本和 action wrapper
+    ├── Data_Collector/         # PPO train/play 脚本和 action wrapper
     ├── EE_API_Test/            # EE 动作通道冒烟测试
     ├── VLA_FT/                 # 可选 SmolVLA 微调辅助脚本
     └── source/openarm_vla/     # 可安装 Python 包和 Gym 注册
 ```
-
-`lerobot/` 在本次整理中故意忽略，不纳入主仓库；需要时请作为本地 checkout 或单独管理。
 
 ## 安装
 
@@ -29,6 +27,8 @@ cd openarm-vla-rl-deployment
 pip install -e openarm_isaac_lab/source/openarm --no-build-isolation
 pip install -e openarm_vla/source/openarm_vla --no-build-isolation
 ```
+
+`openarm_vla/VLA_FT/` 中的 SmolVLA 微调辅助脚本需要 LeRobot；请在用于 VLA 训练的 Python 环境中单独安装。
 
 如果 clone 时没有拉 submodule：
 
@@ -43,11 +43,11 @@ git submodule update --init --recursive
 ```bash
 # Lift
 python openarm_vla/Data_Collector/train_lift.py
-python openarm_vla/Data_Collector/play_lift.py
+python openarm_vla/Data_Collector/play_lift.py --checkpoint_path logs/rsl_rl/openarm_lift/<run>/model_3999.pt
 
 # Soccer
 python openarm_vla/Data_Collector/train_soccer.py
-python openarm_vla/Data_Collector/play_soccer.py
+python openarm_vla/Data_Collector/play_soccer.py --checkpoint_path logs/rsl_rl/openarm_soccer/<run>/model_3200.pt
 ```
 
 常用训练参数：
@@ -58,7 +58,7 @@ python openarm_vla/Data_Collector/train_soccer.py --num_envs 2048 --max_iteratio
 python openarm_vla/Data_Collector/train_soccer.py --video --video_interval 500
 ```
 
-播放脚本主要通过文件顶部常量配置，重点是 `CHECKPOINT_PATH`、`PLAY_GUI` 和视频输出目录。
+播放脚本通过 CLI 参数配置 checkpoint 和常用播放选项，例如 `--checkpoint_path`、`--video_seconds`、`--scene_preset_id`、`--video_output_dir` 和 `--gui`。
 
 ## Soccer Pipeline
 

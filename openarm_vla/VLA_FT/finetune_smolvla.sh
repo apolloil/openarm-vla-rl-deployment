@@ -38,9 +38,9 @@ set -euo pipefail
 # -----------------------------------------------------------------------------
 # 0. 激活 smolvla conda env + 依赖自检
 # -----------------------------------------------------------------------------
-CONDA_BASE="${CONDA_BASE:-/home/lcw/workspace/miniforge3}"
+CONDA_BASE="${CONDA_BASE:-${HOME}/workspace/miniforge3}"
 CONDA_ENV_NAME="${CONDA_ENV_NAME:-smolvla}"
-LEROBOT_REPO_PATH="${LEROBOT_REPO_PATH:-/home/lcw/workspace/openarm/lerobot}"
+LEROBOT_REPO_PATH="${LEROBOT_REPO_PATH:-${PWD}/lerobot}"
 
 if [[ ! -f "${CONDA_BASE}/etc/profile.d/conda.sh" ]]; then
   echo "[finetune_smolvla] conda 找不到：${CONDA_BASE}/etc/profile.d/conda.sh" >&2

@@ -5,18 +5,18 @@
 # training can load them as a concatenated dataset.
 #
 # Usage:
-#   bash openarm_vla/Data_Collector/run_collect_dataset.sh
+#   CHECKPOINT_PATH=logs/rsl_rl/openarm_lift/<run>/model_3999.pt \
+#     bash openarm_vla/Data_Collector/run_collect_dataset.sh
 #
 # Optional overrides (any of them):
-#   NUM_SUCCESS=20 bash openarm_vla/Data_Collector/run_collect_dataset.sh
+#   CHECKPOINT_PATH=... NUM_SUCCESS=20 bash openarm_vla/Data_Collector/run_collect_dataset.sh
 #   DATASET_ROOT=/mnt/big/.../openarm_lift_vla_v0 \
 #     DATASET_REPO_ID=openarm/lift_cube_expert_v0 \
+#     CHECKPOINT_PATH=logs/rsl_rl/openarm_lift/<run>/model_3999.pt \
 #     NUM_SUCCESS=20 \
 #     bash openarm_vla/Data_Collector/run_collect_dataset.sh
 #
-# Requires: conda env ``env_isaaclab``, checkpoint path edited at the top of
-# collect_dataset.py (or passed via CHECKPOINT_PATH override is not wired —
-# edit the file directly).
+# Requires: conda env ``env_isaaclab``.
 
 set -euo pipefail
 
@@ -29,11 +29,16 @@ DATASET_REPO_ID="${DATASET_REPO_ID:-openarm/lift_cube_expert_v0}"
 NUM_SUCCESS="${NUM_SUCCESS:-20}"
 PRESET_START="${PRESET_START:-0}"
 PRESET_END="${PRESET_END:-9}"
+CHECKPOINT_PATH="${CHECKPOINT_PATH:-}"
 
 mkdir -p "${DATASET_ROOT}"
 
 if [[ ! -f "${COLLECT_PY}" ]]; then
   echo "ERROR: missing ${COLLECT_PY}" >&2
+  exit 1
+fi
+if [[ -z "${CHECKPOINT_PATH}" ]]; then
+  echo "ERROR: set CHECKPOINT_PATH=/path/to/model.pt before running this script" >&2
   exit 1
 fi
 
@@ -55,13 +60,10 @@ conda activate env_isaaclab
 
 cd "${REPO_ROOT}"
 
-export OPENARM_COLLECT_DATASET_ROOT="${DATASET_ROOT}"
-export OPENARM_COLLECT_DATASET_REPO_ID="${DATASET_REPO_ID}"
-export OPENARM_COLLECT_NUM_SUCCESS="${NUM_SUCCESS}"
-
 echo "[INFO] Repo:           ${REPO_ROOT}"
 echo "[INFO] Dataset root:   ${DATASET_ROOT}"
 echo "[INFO] Repo id:        ${DATASET_REPO_ID}"
+echo "[INFO] Checkpoint:     ${CHECKPOINT_PATH}"
 echo "[INFO] Per-preset eps: ${NUM_SUCCESS}"
 echo "[INFO] Presets:        ${PRESET_START}..${PRESET_END}  (serial, one Isaac process at a time)"
 
@@ -70,8 +72,12 @@ for i in $(seq "${PRESET_START}" "${PRESET_END}"); do
   echo "========================================"
   echo "[INFO] Collecting preset ${i} / ${PRESET_END}"
   echo "========================================"
-  export OPENARM_COLLECT_SCENE_PRESET="${i}"
-  python "${COLLECT_PY}"
+  python "${COLLECT_PY}" \
+    --checkpoint_path "${CHECKPOINT_PATH}" \
+    --dataset_root "${DATASET_ROOT}" \
+    --dataset_repo_id "${DATASET_REPO_ID}" \
+    --num_success "${NUM_SUCCESS}" \
+    --scene_preset_id "${i}"
   echo "[INFO] Finished preset ${i}"
 done
 

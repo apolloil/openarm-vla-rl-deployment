@@ -16,7 +16,7 @@ Usage::
 
     # Default: soccer task, 4096 envs
     conda activate env_isaaclab
-    cd /home/lcw/workspace/openarm
+    cd /path/to/openarm
     python openarm_vla/Data_Collector/train_soccer.py
   
 
@@ -82,6 +82,7 @@ import gymnasium as gym
 import os
 import torch
 from datetime import datetime
+from pathlib import Path
 
 from rsl_rl.runners import OnPolicyRunner
 
@@ -112,7 +113,7 @@ torch.backends.cudnn.allow_tf32 = True
 torch.backends.cudnn.deterministic = False
 torch.backends.cudnn.benchmark = False
 
-OPENARM_REPO_ROOT = "/home/lcw/workspace/openarm"
+OPENARM_REPO_ROOT = str(Path(__file__).resolve().parents[2])
 
 
 @hydra_task_config(args_cli.task, args_cli.agent)

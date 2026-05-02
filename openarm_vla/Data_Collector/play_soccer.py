@@ -1,7 +1,6 @@
 """Play (evaluate) a trained PPO checkpoint for the 4D EE soccer policy.
 
-Headless server workflow: always records an MP4. Edit the configuration block below
-(no command-line arguments).
+Headless server workflow: always records an MP4. Pass the checkpoint path via CLI.
 
 Loads a checkpoint trained by ``train_soccer.py``, runs the policy in the Play
 variant of the VLA Soccer environment, exports JIT/ONNX next to the checkpoint, and
@@ -13,31 +12,23 @@ Differences from ``play_lift.py``:
   3. ``EulerEEActionWrapper`` is not imported.
 
     conda activate env_isaaclab
-    cd /home/lcw/workspace/openarm
-    python openarm_vla/Data_Collector/play_soccer.py
+    cd /path/to/openarm
+    python openarm_vla/Data_Collector/play_soccer.py --checkpoint_path /path/to/model.pt
 """
 
 # =============================================================================
-# Play configuration — edit here only (no CLI).
+# Play defaults.
 # =============================================================================
-CHECKPOINT_PATH = "/home/lcw/workspace/openarm/logs/rsl_rl/openarm_soccer/2026-05-02_21-23-10/model_1200.pt"
+from pathlib import Path
+
 # Evaluate one full training-length episode by default.  Soccer is aligned to
 # MetaWorld's 500 decision-step horizon: 500 * Isaac step_dt(0.02 s) = 10 s.
-PLAY_EPISODE_LENGTH_S = 10.0
-VIDEO_SECONDS = PLAY_EPISODE_LENGTH_S
+DEFAULT_VIDEO_SECONDS = 10.0
 
 PLAY_TASK = "Isaac-VLA-Soccer-OpenArm-Play-v0"
 RSL_RL_AGENT_ENTRY = "rsl_rl_cfg_entry_point"
-# Mixed into the env seed as (PLAY_SEED + time_ns) % 2**31 so every run differs.
-PLAY_SEED: int | None = None
-# None → keep Hydra/env defaults for sim and agent device.
-PLAY_DEVICE: str | None = None
-# False → headless + off-screen camera (server). True → local GUI viewport.
-PLAY_GUI = False
 # Visual presets (see ``play_scene_presets.py``). Valid: 0 … 9.
-PLAY_SCENE_PRESET_ID = 1
-# If set (e.g. by batch script), MP4s go here instead of ``<run>/videos/play/``.
-PLAY_VIDEO_OUTPUT_DIR: str | None = None
+DEFAULT_PLAY_SCENE_PRESET_ID = 1
 
 # Phase-switch tolerance: require the ball centre to align with Pre_Goal in XY.
 # Z is intentionally ignored because the policy may lift/carry the ball.
@@ -48,7 +39,7 @@ PRE_GOAL_SPEED_XY_TOL = 0.05
 DEBUG_PLAY = False
 DEBUG_PRINT_EVERY_STEPS = 10
 
-OPENARM_REPO_ROOT = "/home/lcw/workspace/openarm"
+OPENARM_REPO_ROOT = str(Path(__file__).resolve().parents[2])
 # =============================================================================
 
 """Launch Isaac Sim Simulator first."""
@@ -58,16 +49,22 @@ import os
 import sys
 
 os.environ.setdefault("CARB_LOGGING_LEVEL", "error")
-os.environ.setdefault("OPENARM_PLAY_EPISODE_LENGTH_S", str(PLAY_EPISODE_LENGTH_S))
-
-# Hydra must not see stray argv.
-sys.argv = [sys.argv[0]]
 
 from isaaclab.app import AppLauncher
 
 import cli_args  # isort: skip
 
-_parser = argparse.ArgumentParser(description="Play PPO-Push (config via globals at top of file).")
+_parser = argparse.ArgumentParser(description="Play PPO-Soccer from a checkpoint.")
+_parser.add_argument(
+    "--checkpoint_path",
+    "--checkpoint-path",
+    required=True,
+    help="Path to the RSL-RL model checkpoint, e.g. logs/rsl_rl/openarm_soccer/<run>/model_3200.pt.",
+)
+_parser.add_argument("--video_seconds", "--video-seconds", type=float, default=DEFAULT_VIDEO_SECONDS)
+_parser.add_argument("--scene_preset_id", "--scene-preset-id", type=int, default=DEFAULT_PLAY_SCENE_PRESET_ID)
+_parser.add_argument("--video_output_dir", "--video-output-dir", type=str, default=None)
+_parser.add_argument("--gui", action="store_true", default=False, help="Launch with a GUI viewport instead of headless mode.")
 _parser.add_argument("--video", action="store_true", default=False, help=argparse.SUPPRESS)
 _parser.add_argument("--video_length", type=int, default=500, help=argparse.SUPPRESS)
 _parser.add_argument("--video_interval", type=int, default=2000, help=argparse.SUPPRESS)
@@ -81,14 +78,25 @@ _parser.add_argument(
 )
 cli_args.add_rsl_rl_args(_parser)
 AppLauncher.add_app_launcher_args(_parser)
-args_cli = _parser.parse_args([])
+args_cli, hydra_args = _parser.parse_known_args()
+
+# Hydra must not see play/AppLauncher args.
+sys.argv = [sys.argv[0]] + hydra_args
+
+CHECKPOINT_PATH = args_cli.checkpoint_path
+VIDEO_SECONDS = args_cli.video_seconds
+PLAY_TASK = args_cli.task
+RSL_RL_AGENT_ENTRY = args_cli.agent
+PLAY_SEED: int | None = args_cli.seed
+PLAY_GUI = args_cli.gui
+PLAY_SCENE_PRESET_ID = args_cli.scene_preset_id
+PLAY_VIDEO_OUTPUT_DIR: str | None = args_cli.video_output_dir
+os.environ.setdefault("OPENARM_PLAY_EPISODE_LENGTH_S", str(VIDEO_SECONDS))
 
 args_cli.task = PLAY_TASK
 args_cli.agent = RSL_RL_AGENT_ENTRY
 args_cli.video = True
 args_cli.enable_cameras = True
-if PLAY_DEVICE is not None:
-    args_cli.device = PLAY_DEVICE
 if PLAY_GUI:
     os.environ["HEADLESS"] = "0"
     args_cli.headless = False
@@ -100,9 +108,8 @@ simulation_app = app_launcher.app
 
 """Rest everything follows."""
 
-import time
 from datetime import datetime
-from pathlib import Path
+import time
 
 import gymnasium as gym
 import numpy as np
@@ -371,10 +378,6 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     agent_cfg = cli_args.update_rsl_rl_cfg(agent_cfg, rsl_ns)
     env_cfg.scene.num_envs = 1
     env_cfg.seed = agent_cfg.seed
-
-    if PLAY_DEVICE is not None:
-        env_cfg.sim.device = PLAY_DEVICE
-        agent_cfg.device = PLAY_DEVICE
 
     if hasattr(env_cfg.terminations, "ball_reached_pre_goal"):
         env_cfg.terminations.ball_reached_pre_goal = None

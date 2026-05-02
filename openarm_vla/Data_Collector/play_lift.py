@@ -1,40 +1,30 @@
 """Play (evaluate) a trained PPO checkpoint for the fixed-orientation EE policy.
 
-Headless server workflow: always records an MP4. Edit the configuration block below
-(no command-line arguments).
+Headless server workflow: always records an MP4. Pass the checkpoint path via CLI.
 
 Loads a checkpoint trained by ``train_lift.py``, runs the policy in the Play
 variant of the VLA environment, exports JIT/ONNX next to the checkpoint, and
 writes a timestamped video under ``<checkpoint_dir>/videos/play/``.
 
     conda activate env_isaaclab
-    cd /home/lcw/workspace/openarm
-    python openarm_vla/Data_Collector/play_lift.py
+    cd /path/to/openarm
+    python openarm_vla/Data_Collector/play_lift.py --checkpoint_path /path/to/model.pt
 """
 
 # =============================================================================
-# Play configuration — edit here only (no CLI).
+# Play defaults.
 # =============================================================================
-CHECKPOINT_PATH = "/home/lcw/workspace/openarm/logs/rsl_rl/openarm_lift/2026-04-21_16-57-06/model_3999.pt"
-VIDEO_SECONDS = 30.0
+from pathlib import Path
+
+DEFAULT_VIDEO_SECONDS = 30.0
 
 PLAY_TASK = "Isaac-VLA-Lift-Cube-OpenArm-Play-v0"
 RSL_RL_AGENT_ENTRY = "rsl_rl_cfg_entry_point"
-# Mixed into the env seed as (PLAY_SEED + time_ns) % 2**31 so every run differs (cube / goal layout).
-# Use None → equivalent to base 0; use an int to add a stable offset band (still unique per run).
-PLAY_SEED: int | None = None
-# None → keep Hydra/env defaults for sim and agent device.
-PLAY_DEVICE: str | None = None
-# False → headless + off-screen camera (server). True → local GUI viewport.
-PLAY_GUI = False
 # Visual presets for cube / table / floor (see ``play_scene_presets.py``). Valid: 0 … 9.
 # Batch scripts may override via env ``OPENARM_PLAY_SCENE_PRESET``.
-PLAY_SCENE_PRESET_ID = 1
-# If set (e.g. by batch script), MP4s go here instead of ``<run>/videos/play/``.
-# Env ``OPENARM_PLAY_VIDEO_DIR`` overrides this when non-empty.
-PLAY_VIDEO_OUTPUT_DIR: str | None = None
+DEFAULT_PLAY_SCENE_PRESET_ID = 1
 
-OPENARM_REPO_ROOT = "/home/lcw/workspace/openarm"
+OPENARM_REPO_ROOT = str(Path(__file__).resolve().parents[2])
 # =============================================================================
 
 """Launch Isaac Sim Simulator first."""
@@ -45,17 +35,24 @@ import sys
 
 os.environ.setdefault("CARB_LOGGING_LEVEL", "error")
 
-# Hydra must not see stray argv; keep only the script name (same idea as train_lift.py).
-sys.argv = [sys.argv[0]]
-
 from isaaclab.app import AppLauncher
 
 import cli_args  # isort: skip
 
 # Match train_lift.py AppLauncher bootstrap: same parser shape (RSL-RL + AppLauncher),
-# then apply globals. A minimal AppLauncher-only Namespace misses fields and has led to
+# then apply CLI play options. A minimal AppLauncher-only Namespace misses fields and has led to
 # headless viewport / render pipeline differences (white frames) on some setups.
-_parser = argparse.ArgumentParser(description="Play PPO-EE (config via globals at top of file).")
+_parser = argparse.ArgumentParser(description="Play PPO-Lift from a checkpoint.")
+_parser.add_argument(
+    "--checkpoint_path",
+    "--checkpoint-path",
+    required=True,
+    help="Path to the RSL-RL model checkpoint, e.g. logs/rsl_rl/openarm_lift/<run>/model_3999.pt.",
+)
+_parser.add_argument("--video_seconds", "--video-seconds", type=float, default=DEFAULT_VIDEO_SECONDS)
+_parser.add_argument("--scene_preset_id", "--scene-preset-id", type=int, default=DEFAULT_PLAY_SCENE_PRESET_ID)
+_parser.add_argument("--video_output_dir", "--video-output-dir", type=str, default=None)
+_parser.add_argument("--gui", action="store_true", default=False, help="Launch with a GUI viewport instead of headless mode.")
 _parser.add_argument("--video", action="store_true", default=False, help=argparse.SUPPRESS)
 _parser.add_argument("--video_length", type=int, default=500, help=argparse.SUPPRESS)
 _parser.add_argument("--video_interval", type=int, default=2000, help=argparse.SUPPRESS)
@@ -69,15 +66,26 @@ _parser.add_argument(
 )
 cli_args.add_rsl_rl_args(_parser)
 AppLauncher.add_app_launcher_args(_parser)
-args_cli = _parser.parse_args([])
+args_cli, hydra_args = _parser.parse_known_args()
+
+# Hydra must not see play/AppLauncher args.
+sys.argv = [sys.argv[0]] + hydra_args
+
+CHECKPOINT_PATH = args_cli.checkpoint_path
+VIDEO_SECONDS = args_cli.video_seconds
+PLAY_TASK = args_cli.task
+RSL_RL_AGENT_ENTRY = args_cli.agent
+# Mixed into the env seed as (PLAY_SEED + time_ns) % 2**31 so every run differs (cube / goal layout).
+PLAY_SEED: int | None = args_cli.seed
+PLAY_GUI = args_cli.gui
+PLAY_SCENE_PRESET_ID = args_cli.scene_preset_id
+PLAY_VIDEO_OUTPUT_DIR: str | None = args_cli.video_output_dir
 
 # --- Overrides from globals (no user CLI) ---------------------------------
 args_cli.task = PLAY_TASK
 args_cli.agent = RSL_RL_AGENT_ENTRY
 args_cli.video = True
 args_cli.enable_cameras = True
-if PLAY_DEVICE is not None:
-    args_cli.device = PLAY_DEVICE
 if PLAY_GUI:
     os.environ["HEADLESS"] = "0"
     args_cli.headless = False
@@ -89,9 +97,8 @@ simulation_app = app_launcher.app
 
 """Rest everything follows."""
 
-import time
 from datetime import datetime
-from pathlib import Path
+import time
 
 import gymnasium as gym
 import numpy as np
@@ -222,10 +229,6 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     agent_cfg = cli_args.update_rsl_rl_cfg(agent_cfg, rsl_ns)
     env_cfg.scene.num_envs = 1
     env_cfg.seed = agent_cfg.seed
-
-    if PLAY_DEVICE is not None:
-        env_cfg.sim.device = PLAY_DEVICE
-        agent_cfg.device = PLAY_DEVICE
 
     log_root_path = os.path.join(OPENARM_REPO_ROOT, "logs", "rsl_rl", agent_cfg.experiment_name)
     print(f"[INFO] Loading experiment from directory: {log_root_path}")

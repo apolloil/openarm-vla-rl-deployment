@@ -10,13 +10,11 @@ This repository contains the VLA/RL layer for OpenArm Isaac Lab experiments. The
 openarm/
 ├── openarm_isaac_lab/          # git submodule: base OpenArm Isaac Lab tasks/assets
 └── openarm_vla/
-    ├── Data_Collector/                     # PPO train/play scripts and action wrappers
+    ├── Data_Collector/         # PPO train/play scripts and action wrappers
     ├── EE_API_Test/            # EE action-channel smoke tests
     ├── VLA_FT/                 # optional SmolVLA fine-tuning helpers
     └── source/openarm_vla/     # installable Python package and Gym registration
 ```
-
-`lerobot/` is intentionally ignored in this cleanup. Keep it as a local checkout or manage it separately if needed.
 
 ## Installation
 
@@ -29,6 +27,8 @@ cd openarm-vla-rl-deployment
 pip install -e openarm_isaac_lab/source/openarm --no-build-isolation
 pip install -e openarm_vla/source/openarm_vla --no-build-isolation
 ```
+
+The optional SmolVLA fine-tuning helpers in `openarm_vla/VLA_FT/` require LeRobot; install it separately in the Python environment used for VLA training.
 
 If you cloned without submodules:
 
@@ -43,11 +43,11 @@ Run commands from the repository root with the Isaac Lab conda environment activ
 ```bash
 # Lift
 python openarm_vla/Data_Collector/train_lift.py
-python openarm_vla/Data_Collector/play_lift.py
+python openarm_vla/Data_Collector/play_lift.py --checkpoint_path logs/rsl_rl/openarm_lift/<run>/model_3999.pt
 
 # Soccer
 python openarm_vla/Data_Collector/train_soccer.py
-python openarm_vla/Data_Collector/play_soccer.py
+python openarm_vla/Data_Collector/play_soccer.py --checkpoint_path logs/rsl_rl/openarm_soccer/<run>/model_3200.pt
 ```
 
 Useful training overrides:
@@ -58,7 +58,7 @@ python openarm_vla/Data_Collector/train_soccer.py --num_envs 2048 --max_iteratio
 python openarm_vla/Data_Collector/train_soccer.py --video --video_interval 500
 ```
 
-The play scripts are configured by constants at the top of each file, especially `CHECKPOINT_PATH`, `PLAY_GUI`, and video output settings.
+The play scripts take the checkpoint path and common playback options from CLI flags such as `--checkpoint_path`, `--video_seconds`, `--scene_preset_id`, `--video_output_dir`, and `--gui`.
 
 ## Soccer Pipeline
 
