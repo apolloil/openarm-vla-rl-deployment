@@ -10,7 +10,7 @@ This repository contains the VLA/RL layer for OpenArm Isaac Lab experiments. The
 openarm/
 ├── openarm_isaac_lab/          # git submodule: base OpenArm Isaac Lab tasks/assets
 └── openarm_vla/
-    ├── RL/                     # PPO train/play scripts and action wrappers
+    ├── Data_Collector/                     # PPO train/play scripts and action wrappers
     ├── EE_API_Test/            # EE action-channel smoke tests
     ├── VLA_FT/                 # optional SmolVLA fine-tuning helpers
     └── source/openarm_vla/     # installable Python package and Gym registration
@@ -42,20 +42,20 @@ Run commands from the repository root with the Isaac Lab conda environment activ
 
 ```bash
 # Lift
-python openarm_vla/RL/train_lift.py
-python openarm_vla/RL/play_lift.py
+python openarm_vla/Data_Collector/train_lift.py
+python openarm_vla/Data_Collector/play_lift.py
 
 # Soccer
-python openarm_vla/RL/train_soccer.py
-python openarm_vla/RL/play_soccer.py
+python openarm_vla/Data_Collector/train_soccer.py
+python openarm_vla/Data_Collector/play_soccer.py
 ```
 
 Useful training overrides:
 
 ```bash
-python openarm_vla/RL/train_lift.py --num_envs 2048 --max_iterations 5000 --seed 42
-python openarm_vla/RL/train_soccer.py --num_envs 2048 --max_iterations 4000 --seed 42
-python openarm_vla/RL/train_soccer.py --video --video_interval 500
+python openarm_vla/Data_Collector/train_lift.py --num_envs 2048 --max_iterations 5000 --seed 42
+python openarm_vla/Data_Collector/train_soccer.py --num_envs 2048 --max_iterations 4000 --seed 42
+python openarm_vla/Data_Collector/train_soccer.py --video --video_interval 500
 ```
 
 The play scripts are configured by constants at the top of each file, especially `CHECKPOINT_PATH`, `PLAY_GUI`, and video output settings.

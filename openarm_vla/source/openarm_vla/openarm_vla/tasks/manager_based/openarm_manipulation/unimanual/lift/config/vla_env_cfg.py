@@ -50,7 +50,7 @@ VLA action format (7-dim):
   grip > 0.5 → open, ≤ 0.5 → close  (BinaryJointPosition threshold).
 
 PPO policy interface is reduced to 4-dim ``[Δx, Δy, Δz, grip]`` by
-``RL/lift_ee_action_wrapper.py``; rotation deltas are sent as zeros.
+``Data_Collector/lift_ee_action_wrapper.py``; rotation deltas are sent as zeros.
 
 Rewards (unchanged from original Lift):
   reaching_object         (+1.1)  – EE-to-object distance

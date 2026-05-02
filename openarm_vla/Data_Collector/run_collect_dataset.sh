@@ -5,14 +5,14 @@
 # training can load them as a concatenated dataset.
 #
 # Usage:
-#   bash openarm_vla/RL/run_collect_dataset.sh
+#   bash openarm_vla/Data_Collector/run_collect_dataset.sh
 #
 # Optional overrides (any of them):
-#   NUM_SUCCESS=20 bash openarm_vla/RL/run_collect_dataset.sh
+#   NUM_SUCCESS=20 bash openarm_vla/Data_Collector/run_collect_dataset.sh
 #   DATASET_ROOT=/mnt/big/.../openarm_lift_vla_v0 \
 #     DATASET_REPO_ID=openarm/lift_cube_expert_v0 \
 #     NUM_SUCCESS=20 \
-#     bash openarm_vla/RL/run_collect_dataset.sh
+#     bash openarm_vla/Data_Collector/run_collect_dataset.sh
 #
 # Requires: conda env ``env_isaaclab``, checkpoint path edited at the top of
 # collect_dataset.py (or passed via CHECKPOINT_PATH override is not wired —

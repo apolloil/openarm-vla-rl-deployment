@@ -10,7 +10,7 @@
 openarm/
 ├── openarm_isaac_lab/          # git submodule：基础 OpenArm Isaac Lab 任务和资产
 └── openarm_vla/
-    ├── RL/                     # PPO train/play 脚本和 action wrapper
+    ├── Data_Collector/                     # PPO train/play 脚本和 action wrapper
     ├── EE_API_Test/            # EE 动作通道冒烟测试
     ├── VLA_FT/                 # 可选 SmolVLA 微调辅助脚本
     └── source/openarm_vla/     # 可安装 Python 包和 Gym 注册
@@ -42,20 +42,20 @@ git submodule update --init --recursive
 
 ```bash
 # Lift
-python openarm_vla/RL/train_lift.py
-python openarm_vla/RL/play_lift.py
+python openarm_vla/Data_Collector/train_lift.py
+python openarm_vla/Data_Collector/play_lift.py
 
 # Soccer
-python openarm_vla/RL/train_soccer.py
-python openarm_vla/RL/play_soccer.py
+python openarm_vla/Data_Collector/train_soccer.py
+python openarm_vla/Data_Collector/play_soccer.py
 ```
 
 常用训练参数：
 
 ```bash
-python openarm_vla/RL/train_lift.py --num_envs 2048 --max_iterations 5000 --seed 42
-python openarm_vla/RL/train_soccer.py --num_envs 2048 --max_iterations 4000 --seed 42
-python openarm_vla/RL/train_soccer.py --video --video_interval 500
+python openarm_vla/Data_Collector/train_lift.py --num_envs 2048 --max_iterations 5000 --seed 42
+python openarm_vla/Data_Collector/train_soccer.py --num_envs 2048 --max_iterations 4000 --seed 42
+python openarm_vla/Data_Collector/train_soccer.py --video --video_interval 500
 ```
 
 播放脚本主要通过文件顶部常量配置，重点是 `CHECKPOINT_PATH`、`PLAY_GUI` 和视频输出目录。

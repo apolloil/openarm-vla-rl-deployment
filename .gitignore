@@ -5,7 +5,7 @@ __pycache__/
 
 logs/
 Multi-Scene-Video/
-openarm_vla/RL/outputs/
+openarm_vla/Data_Collector/outputs/
 
 # Local third-party checkout; not included in this repo for now.
 lerobot/

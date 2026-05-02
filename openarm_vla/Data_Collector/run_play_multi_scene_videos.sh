@@ -2,7 +2,7 @@
 # Sequentially run play_lift.py for scene presets 0–9 (one process at a time; saves VRAM).
 # Videos go to: <openarm repo>/Multi-Scene-Video/
 #
-#   bash openarm_vla/RL/run_play_multi_scene_videos.sh
+#   bash openarm_vla/Data_Collector/run_play_multi_scene_videos.sh
 #
 # Requires: conda env ``env_isaaclab``, checkpoint/settings edited in play_lift.py.
 

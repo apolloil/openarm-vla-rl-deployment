@@ -22,7 +22,7 @@ Highlights:
 
     conda activate env_isaaclab
     cd /home/lcw/workspace/openarm
-    python openarm_vla/RL/collect_dataset.py
+    python openarm_vla/Data_Collector/collect_dataset.py
 """
 
 from __future__ import annotations

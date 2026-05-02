@@ -14,7 +14,7 @@ Differences from ``play_lift.py``:
 
     conda activate env_isaaclab
     cd /home/lcw/workspace/openarm
-    python openarm_vla/RL/play_soccer.py
+    python openarm_vla/Data_Collector/play_soccer.py
 """
 
 # =============================================================================

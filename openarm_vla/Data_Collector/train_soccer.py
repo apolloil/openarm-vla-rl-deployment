@@ -1,25 +1,32 @@
-"""Train PPO agent with fixed-orientation EE action space on the Lift-Cube task.
+"""Train PPO agent with 4D EE action space on the Soccer task.
 
-The policy outputs only [Δx, Δy, Δz, grip] (4-dim continuous); rotation
-deltas to the DiffIK backend are always zero. The initial downward grasp
-posture is baked into ``init_state.joint_pos`` of the VLA Lift env, so every
-reset (manual + Isaac Lab auto-reset) starts from the same wrist pose.
+The policy outputs [Δx, Δy, Δz, grip] (4-dim continuous); rotation deltas
+to the DiffIK backend are always zero, but the gripper is policy-controlled
+so the agent can open/close as needed (consistent with MetaWorld soccer demos).
+The initial downward grasp posture is baked into ``init_state.joint_pos`` of
+the VLA Soccer env, so every reset (manual + Isaac Lab auto-reset) starts
+from the same wrist pose used by Lift VLA.
+
+Differences from ``train_lift.py``:
+  1. Default ``--task`` is ``Isaac-VLA-Soccer-OpenArm-v0``.
+  2. Uses ``Push3DEEActionWrapper`` (4-dim [dx,dy,dz,grip], zero rotation).
+  3. ``EulerEEActionWrapper`` is not imported.
 
 Usage::
 
+    # Default: soccer task, 4096 envs
     conda activate env_isaaclab
     cd /home/lcw/workspace/openarm
-
-    # Default: lift task, 4096 envs, 4000 iterations (see OpenArmLiftVlaPPORunnerCfg)
-    python openarm_vla/RL/train_lift.py
+    python openarm_vla/Data_Collector/train_soccer.py
+  
 
     # Custom
-    python openarm_vla/RL/train_lift.py \\
-        --task Isaac-VLA-Lift-Cube-OpenArm-v0 \\
-        --num_envs 2048 --max_iterations 5000 --seed 42
+    python openarm_vla/Data_Collector/train_soccer.py \\
+        --task Isaac-VLA-Soccer-OpenArm-v0 \\
+        --num_envs 2048 --max_iterations 4000 --seed 42
 
     # With video recording
-    python openarm_vla/RL/train_lift.py --video --video_interval 500
+    python openarm_vla/Data_Collector/train_soccer.py --video --video_interval 500
 """
 
 """Launch Isaac Sim Simulator first."""
@@ -33,15 +40,15 @@ from isaaclab.app import AppLauncher
 import cli_args  # isort: skip
 
 parser = argparse.ArgumentParser(
-    description="Train PPO agent with EE (Euler delta) action space via RSL-RL."
+    description="Train PPO agent with push-only 3D EE action space via RSL-RL."
 )
 parser.add_argument("--video", action="store_true", default=False, help="Record videos during training.")
 parser.add_argument("--video_length", type=int, default=200, help="Length of the recorded video (in steps).")
 parser.add_argument("--video_interval", type=int, default=2000, help="Interval between video recordings (in steps).")
 parser.add_argument("--num_envs", type=int, default=None, help="Number of environments to simulate.")
 parser.add_argument(
-    "--task", type=str, default="Isaac-VLA-Lift-Cube-OpenArm-v0",
-    help="Gym task ID (default: Isaac-VLA-Lift-Cube-OpenArm-v0).",
+    "--task", type=str, default="Isaac-VLA-Soccer-OpenArm-v0",
+    help="Gym task ID (default: Isaac-VLA-Soccer-OpenArm-v0).",
 )
 parser.add_argument(
     "--agent", type=str, default="rsl_rl_cfg_entry_point",
@@ -97,7 +104,7 @@ from isaaclab_tasks.utils.hydra import hydra_task_config
 import openarm.tasks  # noqa: F401
 import openarm_vla.tasks  # noqa: F401  — registers Isaac-VLA-* Gym IDs
 
-from lift_ee_action_wrapper import EulerEEActionWrapper
+from soccer_ee_action_wrapper import Push3DEEActionWrapper
 from policy_action_vecenv_wrapper import PolicyActionVecEnvWrapper
 
 torch.backends.cuda.matmul.allow_tf32 = True
@@ -110,7 +117,7 @@ OPENARM_REPO_ROOT = "/home/lcw/workspace/openarm"
 
 @hydra_task_config(args_cli.task, args_cli.agent)
 def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agent_cfg: RslRlBaseRunnerCfg):
-    """Train PPO with RSL-RL on EE (Euler) action space."""
+    """Train PPO with RSL-RL on push-only 3D EE action space."""
     # override configurations with non-hydra CLI arguments
     agent_cfg = cli_args.update_rsl_rl_cfg(agent_cfg, args_cli)
     env_cfg.scene.num_envs = args_cli.num_envs if args_cli.num_envs is not None else env_cfg.scene.num_envs
@@ -153,8 +160,8 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     if isinstance(env.unwrapped, DirectMARLEnv):
         env = multi_agent_to_single_agent(env)
 
-    # Expose the 4D policy interface: [dx, dy, dz, grip].
-    env = EulerEEActionWrapper(env)
+    # Expose the 3D push-only policy interface: [dx, dy, dz], gripper always closed.
+    env = Push3DEEActionWrapper(env)
 
     # save resume path before creating a new log_dir
     if agent_cfg.resume:

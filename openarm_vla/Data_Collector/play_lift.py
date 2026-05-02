@@ -9,7 +9,7 @@ writes a timestamped video under ``<checkpoint_dir>/videos/play/``.
 
     conda activate env_isaaclab
     cd /home/lcw/workspace/openarm
-    python openarm_vla/RL/play_lift.py
+    python openarm_vla/Data_Collector/play_lift.py
 """
 
 # =============================================================================

@@ -210,7 +210,7 @@ except ModuleNotFoundError as _e:
 import openarm.tasks  # noqa: F401
 import openarm_vla.tasks  # noqa: F401
 
-_RL_DIR = Path(__file__).resolve().parents[1] / "RL"
+_RL_DIR = Path(__file__).resolve().parents[1] / "Data_Collector"
 if str(_RL_DIR) not in sys.path:
     sys.path.insert(0, str(_RL_DIR))
 

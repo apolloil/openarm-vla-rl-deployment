@@ -49,7 +49,7 @@ export WANDB_DISABLED=true
 
 FT_SCRIPT="${HERE}/finetune_smolvla.sh"
 VERIFY_PY="${HERE}/verify_finetune_output.py"
-COLLECT_PY="${REPO_ROOT}/openarm_vla/RL/collect_dataset.py"
+COLLECT_PY="${REPO_ROOT}/openarm_vla/Data_Collector/collect_dataset.py"
 
 say() { echo "[smoke_test_smolvla] $*"; }
 
